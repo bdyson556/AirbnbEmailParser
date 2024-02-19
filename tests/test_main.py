@@ -5,6 +5,7 @@ import sample_A
 import sample_B
 import sample_C
 import sample_D
+import sample_E
 import logging
 
 logging.basicConfig(level=logging.INFO)
@@ -12,7 +13,7 @@ TERMINAL_WIDTH = 400
 
 class TestMainFunctions(unittest.TestCase):
 
-    samples = [sample_A.input_data, sample_B.input_data, sample_C.input_data, sample_D.input_data]
+    samples = [sample_A.input_data, sample_B.input_data, sample_C.input_data, sample_D.input_data, sample_E.input_data]
     correct_data = [
         {"reservation_date": "2023-11-21T21:13:08", "guest_name": "Sheila Carlile",
           'guest_f_name': "Sheila", 'guest_l_name': "Carlile", "confirmation_code": "HMQTYNHWQD",
@@ -37,7 +38,13 @@ class TestMainFunctions(unittest.TestCase):
          "subject_line": "Reservation confirmed - Fabian Romero arrives Jun 14", "unit": "condo_entire_unit",
          "check_in_date": "2024-06-14T17:00:00", "check_out_date": "2024-06-25T15:00:00", "guest_total": 1266.85,
          "nightly_rate": 84.03, "nights": 11, "payout": 974.17, "cleaning_fee": 80.00, "guest_service_fee": 141.78,
-         "host_service_fee": 30.13}
+         "host_service_fee": 30.13},
+        {"reservation_date": "2024-02-19T09:56:56", "guest_name": "江理子 Qing",
+         'guest_f_name': "江理子", 'guest_l_name': "Qing", "confirmation_code": "HM2P3NHWTS",
+         "subject_line": "Reservation confirmed - 江理子 Qing arrives May 31", "unit": "condo_entire_unit",
+         "check_in_date": "2024-05-31T17:00:00", "check_out_date": "2024-06-06T15:00:00", "guest_total": 826.55,
+         "nightly_rate": 94.67, "nights": 6, "payout": 628.56, "cleaning_fee": 80.00, "guest_service_fee": 100.63,
+         "host_service_fee": 19.44}
     ]
 
     def test_samples(self):
