@@ -1,9 +1,10 @@
 import re
 import traceback
 from datetime import datetime
-from tests.sample_A import input_data  # TODO: deleted before uploading to Zapier
 import logging
 
+DOLLAR_PATTERN_NO_COMMA = "\$\d{2,3}\.\d{2}"
+DOLLAR_PATTERN_WITH_COMMA = "\$\d{1,3}(?:,\d{3})*\.\d{2}"
 CHECKIN_PATTERN = "check.{0,10}in"
 CHECKOUT_PATTERN = "check.{0,10}out"
 DATE_PATTERN = "(?:SUN|MON|TUE|WED|THU|FRI|SAT|MONDAY|TUESDAY|WEDNESDAY|THURSDAY|FRIDAY|SATURDAY|SUNDAY).{0,5}(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC|JANUARY|FEBRUARY|MARCH|APRIL|AUGUST|SEPTEMBER|NOVEMBER|DECEMBER).{0,5}\d{1,4}"
@@ -42,8 +43,59 @@ def convert_to_iso_date(date_string, year=None):
                        "Date formats attempted: " + str(DATE_FORMATS_WITHOUT_YEAR) + " " + str(DATE_FORMATS_WITH_YEAR))
 
 
+def find_rate_and_nights(body):
+    match = re.search("\$\d{2,3}\.\d{2} x \d{1,2} nights", body)
+    if match:
+        return match.group()
+    else:
+        raise RuntimeError("Nightly rate not found!")
+
+
+def find_nightly_rate(rate_and_nights):
+    # e.g. "$94.00 x 4 nights"
+    try:
+        return float(re.search("\d{2,3}\.\d{2}", rate_and_nights).group())
+    except:
+        raise RuntimeError(f"Unable to convert nightly rate to float. Rate: {rate_and_nights}.")
+
+
+def find_num_nights(rate_and_nights):
+    # e.g. "$94.00 x 4 nights"
+    pre_result = re.search("\d{1,2} nights", rate_and_nights).group()
+    return int(re.search("\d{1,2}", pre_result).group())
+
+
+def find_fee(body, fee):
+    # e.g. "Cleaning fee   $60.00"
+    pattern = fee + ".{0,50}\$\d{2,3}\.\d{2}\s"
+    pre_result = re.search(pattern, body)
+    if pre_result:
+        try:
+            return float(re.findall("\d{1,3}\.\d{2}", pre_result.group(0))[0])
+        except:
+            raise RuntimeError(f"Unable to convert {fee} to float.")
+
+
+def find_totals(body):
+    pattern = "TOTAL.{0,12}? \$\d{1,3}(?:,\d{3})*\.\d{2}"
+    raw_search_result = re.findall(pattern, body)
+    if len(raw_search_result) < 2:
+        raise RuntimeError("Fewer than two totals found.")
+    try:
+        # Extract dollar amounts as floats.
+        return list(map(lambda x: float(re.search("\d{1,3}(?:,\d{3})*\.\d{2}", x).group().replace(",", "")), raw_search_result))
+    except:
+        raise RuntimeError("Unable to extract totals as floats.")
+
+
+def get_payout(totals):
+    return min(totals)
+
+def get_guest_total(totals):
+    return max(totals)
+
 def main(input_data):
-    body = input_data['body_plain'].replace("\n", " ")
+    body = input_data['body_plain'].replace("\n", "  ")
     subject_line = input_data["subject_line"]
     sent_datetime = convert_to_iso_date(input_data['date'])
     year = sent_datetime.year
@@ -56,7 +108,6 @@ def main(input_data):
     guest_f_name = None
     guest_l_name = None
     unit = None
-    guest_total = 0.00
 
     try:
         if len(confirmation_search_result) == 0: raise Exception("Confirmation code not found.")
@@ -90,7 +141,6 @@ def main(input_data):
     # Find guest name
 
     name_rough_search = re.findall(r"[A-Za-z0-9]+[\s]*[A-Za-z0-9]* arrives", subject_line)
-    # if len(name_rough_search) == 0: raise Exception("Name not found.")
     try:
         guest_name = name_rough_search[0].replace(" arrives", "")
         guest_names = guest_name.split(" ")
@@ -101,12 +151,12 @@ def main(input_data):
 
     # Find unit
 
-    if CONDO_ROOM_A in body:
+    if CONDO_ENTIRE_UNIT in body:
+        unit = "condo_entire_unit"
+    elif CONDO_ROOM_A in body:
         unit = "condo_room_A"
     elif CONDO_ROOM_B in body:
         unit = "condo_room_B"
-    elif CONDO_ENTIRE_UNIT in body:
-        unit = "condo_entire_unit"
     elif SHELDON_GUEST_ROOM in body:
         unit = "sheldon_guest_room"
     else:
@@ -114,18 +164,44 @@ def main(input_data):
 
     # Find guest payment
 
-    pmt_pattern = r"\$\d+(?:\.\d{2})?\b"
-    pmt_search_result = re.findall(pmt_pattern, body)
-    try:
-        if len(pmt_search_result) == 0: raise Exception("Guest payment not found.")
-        dollar_signs_removed = [amount.replace('$', '') for amount in pmt_search_result]
-        float_payments = map(lambda x: float(x), dollar_signs_removed)
-        guest_total = max(float_payments)
-    except:
-        traceback.print_exc()
+    # pmt_pattern = r"\$\d+(?:\.\d{2})?\b"
+    # pmt_search_result = re.findall(pmt_pattern, body)
+    # try:
+    #     if len(pmt_search_result) == 0: raise RuntimeError("Guest payment not found.")
+    #     dollar_signs_removed = [amount.replace('$', '') for amount in pmt_search_result]
+    #     float_payments = map(lambda x: float(x), dollar_signs_removed)
+    #     guest_total = max(float_payments)
+    # except:
+    #     traceback.print_exc()
 
-    # Return result
+    totals = find_totals(body)
+    payout = get_payout(totals)
+    guest_total = get_guest_total(totals)
+    rate_and_nights = find_rate_and_nights(body)
+    nightly_rate = find_nightly_rate(rate_and_nights)
+    nights = find_num_nights(rate_and_nights)
+    cleaning_fee = find_fee(body, "Cleaning fee")
+    guest_service_fee = find_fee(body, "Guest service fee")
+    host_service_fee = find_fee(body, "Service fee")
 
-    return {'reservation_date': sent_datetime, 'guest_name': guest_name, 'guest_f_name': guest_f_name, 'guest_l_name': guest_l_name, 'confirmation_code': confirmation_code, 'subject_line': subject_line, 'unit': unit, 'check_in_date': iso_checkin, 'check_out_date': iso_checkout, 'guest_total': guest_total, 'body': body}
+    return {
+        'reservation_date': sent_datetime,
+        'guest_name': guest_name,
+        'guest_f_name': guest_f_name,
+        'guest_l_name': guest_l_name,
+        'confirmation_code': confirmation_code,
+        'subject_line': subject_line,
+        'unit': unit,
+        'check_in_date': iso_checkin,
+        'check_out_date': iso_checkout,
+        'guest_total': guest_total,
+        'nightly_rate':  nightly_rate,
+        'nights': nights,
+        'payout': payout,
+        'cleaning_fee': cleaning_fee,
+        'guest_service_fee': guest_service_fee,
+        'host_service_fee': host_service_fee,
+        'body': body
+    }
 
 # return main(input_data)

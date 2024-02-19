@@ -1,4 +1,5 @@
 input_data = {
+    "name": "Sample A - Sheila",
     "subject_line": "Reservation confirmed - Sheila Karpf arrives Jun 27",
     "date": "Tue, 21 Nov 2023 21:13:08 +0000 (UTC)",
     "body_plain": """https://www.airbnb.com/?c=.pi80.pkYm9va2luZy92Ml9taWdyYXRpb24vcmVzZXJ2YXRpb25faG9zdF9jb25maXJtYXRpb24=&euid=e679b9cc-61a3-f2e0-b54f-85d6488a29aa
