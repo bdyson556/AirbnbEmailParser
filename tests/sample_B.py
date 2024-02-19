@@ -1,6 +1,6 @@
 input_data = {
     "name": "Sample B - Ladisha",
-    "subject_line": "Reservation confirmed - Ladisha Allen arrives Nov 19",
+    "subject_line": "Reservation confirmed - Ladisha James arrives Nov 19",
     "date": "Sat, 18 Nov 2023 00:11:43 +0000 (UTC)",
     "body_plain": """%opentrack%
 
