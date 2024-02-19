@@ -50,6 +50,11 @@ class TestMainFunctions(unittest.TestCase):
             logging.info("\tCorrect data: " + str(self.correct_data[i]))
             logging.info("\tOutput data:  " + str(output_data))
             self.assertTrue(output_data == self.correct_data[i])
+            self.assertIsNotNone(output_data["confirmation_code"])
+            self.assertTrue(output_data["payout"] < output_data["guest_total"])
+            self.assertTrue(output_data["check_in_date"] < output_data["check_out_date"])
+            for key in ["guest_total", "nightly_rate", "payout", "cleaning_fee", "guest_service_fee", "host_service_fee"]:
+                self.assertTrue(isinstance(output_data[key], float))
             logging.info("\tDATA EXTRACTION SUCCESSFUL.")
 
     def test_get_nightly_rate(self):
