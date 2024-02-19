@@ -9,30 +9,32 @@ import traceback
 from datetime import datetime
 import logging
 
-DOLLAR_PATTERN_NO_COMMA = "\$\d{2,3}\.\d{2}"
-DOLLAR_PATTERN_WITH_COMMA = "\$\d{1,3}(?:,\d{3})*\.\d{2}"
+UTC_ISO_FORMAT = "%Y-%m-%dT%H:%M:%S"
+DOLLAR_PATTERN_NO_COMMA = fr"\d{{1,3}}\.\d{{2}}"
+DOLLAR_PATTERN_WITH_COMMA = fr"\$\d{{1,3}}(?:,\d{{3}})*\.\d{{2}}"
+DOLLAR_PATTERN_WITH_COMMA_NO_DOLLAR = fr"\d{{1,3}}(?:,\d{{3}})*\.\d{{2}}"
+NUM_NIGHTS_PATTERN = r"\d{1,2}"
 CHECKIN_PATTERN = "check.{0,10}in"
 CHECKOUT_PATTERN = "check.{0,10}out"
 DATE_PATTERN = "(?:SUN|MON|TUE|WED|THU|FRI|SAT|MONDAY|TUESDAY|WEDNESDAY|THURSDAY|FRIDAY|SATURDAY|SUNDAY).{0,5}(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC|JANUARY|FEBRUARY|MARCH|APRIL|AUGUST|SEPTEMBER|NOVEMBER|DECEMBER).{0,5}\d{1,4}"
 ANY_OF_THREE = f'(?:{CHECKOUT_PATTERN}|{CHECKIN_PATTERN}|{DATE_PATTERN})'
-CHECKIN_CHECKOUT_PATTERN = rf"(?:{ANY_OF_THREE}.{{0,100}}){{2,8}}"
+CHECKIN_CHECKOUT_PATTERN = fr"(?:{ANY_OF_THREE}.{{0,100}}){{2,8}}"
+FEE_PATTERN = fr".{{0,50}}\$\d{{2,3}}\.\d{{2}}\b"
 DATE_FORMATS_WITH_YEAR = [
     "%a, %b %d, %Y",
     "%A, %B %d, %Y",
     "%a, %d %b %Y %H:%M:%S %z (%Z)"
 ]
 DATE_FORMATS_WITHOUT_YEAR = ["%a, %b %d", "%A, %B %d"]
-ISO_FORMAT = "%Y-%m-%dT%H:%M:%S"
 CURRENT_YEAR = datetime.now().year
-CONDO_ROOM_A = "FRESH UPTOWN CONDO ROOM WITH PRIVATE PARKING"
-CONDO_ROOM_B = "NEWLY REMODELED POSH UPTOWN CONDO ROOM"
-CONDO_ENTIRE_UNIT = "TWO-BEDROOM UPTOWN CONDO WITH BIDET"
-SHELDON_GUEST_ROOM = "GUEST SUITE WITH PRIVATE BATH"
-CONFIRMATION_PATTERN = r"\bHM[A-Z0-9]{8,12}\b"
+CONDO_ROOM_A_LIST_NAME, rm_A_output_nm = "FRESH UPTOWN CONDO ROOM WITH PRIVATE PARKING", "condo_room_A"
+CONDO_ROOM_B_LIST_NAME, rm_B_output_nm = "NEWLY REMODELED POSH UPTOWN CONDO ROOM", "condo_room_B"
+CONDO_ENTIRE_UNIT_LIST_NAME, condo_unit_output_nm = "TWO-BEDROOM UPTOWN CONDO WITH BIDET", "condo_entire_unit"
+SHELDON_GUEST_ROOM_LIST_NAME, sheldon_guest_rm_output_nm = "GUEST SUITE WITH PRIVATE BATH", "sheldon_guest_room"
 
 
 def find_confirmation_code(body):
-    confirmation_search_result = re.findall(CONFIRMATION_PATTERN, body)
+    confirmation_search_result = re.findall(r"\bHM[A-Z0-9]{8,12}\b", body)
     if len(confirmation_search_result) == 0:
         raise RuntimeError("Confirmation code not found.")
     return confirmation_search_result[0]
@@ -73,15 +75,16 @@ def find_dates(body, year):
             except ValueError as e:
                 traceback.print_exc()
         iso_dates.sort()
-        iso_checkin = iso_dates[0].replace(hour=17).strftime(ISO_FORMAT)  # Set check-in time to 5:00
-        iso_checkout = iso_dates[1].replace(hour=15).strftime(ISO_FORMAT)  # Set check-in time to 3:00
+        iso_checkin = iso_dates[0].replace(hour=17).strftime(UTC_ISO_FORMAT)  # Set check-in time to 5:00
+        iso_checkout = iso_dates[1].replace(hour=15).strftime(UTC_ISO_FORMAT)  # Set check-in time to 3:00
         return [iso_checkin, iso_checkout]
     except Exception as e:
         traceback.print_exc()
 
 
 def find_rate_and_nights(body):
-    match = re.search("\$\d{2,3}\.\d{2} x \d{1,2} nights", body)
+    pattern = fr"{DOLLAR_PATTERN_NO_COMMA} x {NUM_NIGHTS_PATTERN} nights"
+    match = re.search(pattern, body)
     if match:
         return match.group()
     else:
@@ -91,36 +94,36 @@ def find_rate_and_nights(body):
 def find_nightly_rate(rate_and_nights):
     # e.g. "$94.00 x 4 nights"
     try:
-        return float(re.search("\d{2,3}\.\d{2}", rate_and_nights).group())
+        return float(re.search(DOLLAR_PATTERN_NO_COMMA, rate_and_nights).group())
     except:
         raise RuntimeError(f"Unable to convert nightly rate to float. Rate: {rate_and_nights}.")
 
 
 def find_num_nights(rate_and_nights):
-    # e.g. "$94.00 x 4 nights"
-    pre_result = re.search("\d{1,2} nights", rate_and_nights).group()
-    return int(re.search("\d{1,2}", pre_result).group())
+    pre_result = re.search(f"{NUM_NIGHTS_PATTERN} nights", rate_and_nights).group()
+    return int(re.search(NUM_NIGHTS_PATTERN, pre_result).group())
 
 
 def find_fee(body, fee):
     # e.g. "Cleaning fee   $60.00"
-    pattern = fee + ".{0,50}\$\d{2,3}\.\d{2}\s"
+    pattern = fr"{fee}{FEE_PATTERN}"
     pre_result = re.search(pattern, body)
     if pre_result:
         try:
-            return float(re.findall("\d{1,3}\.\d{2}", pre_result.group(0))[0])
+            pattern = fr"{DOLLAR_PATTERN_NO_COMMA}"
+            return float(re.findall(pattern, pre_result.group(0))[0])
         except:
             raise RuntimeError(f"Unable to convert {fee} to float.")
 
 
 def find_totals(body):
-    pattern = "TOTAL.{0,12}? \$\d{1,3}(?:,\d{3})*\.\d{2}"
+    pattern = fr"TOTAL.{{0,12}}? {DOLLAR_PATTERN_WITH_COMMA}"
     raw_search_result = re.findall(pattern, body)
     if len(raw_search_result) < 2:
         raise RuntimeError("Fewer than two totals found.")
     try:
         # Extract dollar amounts as floats.
-        return list(map(lambda x: float(re.search("\d{1,3}(?:,\d{3})*\.\d{2}", x).group().replace(",", "")), raw_search_result))
+        return list(map(lambda x: float(re.search(DOLLAR_PATTERN_WITH_COMMA_NO_DOLLAR, x).group().replace(",", "")), raw_search_result))
     except:
         raise RuntimeError("Unable to extract totals as floats.")
 
@@ -132,7 +135,8 @@ def get_guest_total(totals): return max(totals)
 
 
 def find_guest_names(subject_line):
-    name_rough_search = re.findall(r"[A-Za-z0-9]+[\s]*[A-Za-z0-9]* arrives", subject_line)
+    pattern = re.compile(r'[\w\s]* arrives', re.U)
+    name_rough_search = list(map(lambda x: x.strip(), re.findall(pattern, subject_line)))
     names = []
     try:
         guest_name = name_rough_search[0].replace(" arrives", "")
@@ -147,14 +151,14 @@ def find_guest_names(subject_line):
 
 
 def find_unit(body):
-    if CONDO_ENTIRE_UNIT in body:
-        return "condo_entire_unit"
-    elif CONDO_ROOM_A in body:
-        return "condo_room_A"
-    elif CONDO_ROOM_B in body:
-        return "condo_room_B"
-    elif SHELDON_GUEST_ROOM in body:
-        return "sheldon_guest_room"
+    if CONDO_ENTIRE_UNIT_LIST_NAME in body:
+        return condo_unit_output_nm
+    elif SHELDON_GUEST_ROOM_LIST_NAME in body:
+        return sheldon_guest_rm_output_nm
+    elif CONDO_ROOM_A_LIST_NAME in body:
+        return rm_A_output_nm
+    elif CONDO_ROOM_B_LIST_NAME in body:
+        return rm_B_output_nm
     else:
         return "INVALID_UNIT"
 
@@ -164,7 +168,7 @@ def main(input_data):
     subject_line = input_data["subject_line"]
     sent_datetime = convert_to_iso_date(input_data['date'])
     year = sent_datetime.year
-    sent_datetime = sent_datetime.strftime("%Y-%m-%dT%H:%M:%S")
+    sent_datetime = sent_datetime.strftime(UTC_ISO_FORMAT)
 
     confirmation_code = find_confirmation_code(body)
 
