@@ -6,56 +6,69 @@ import sample_B
 import sample_C
 import sample_D
 import sample_E
+import sample_F
 import logging
 
-logging.basicConfig(level=logging.INFO)
+from EmailParser import logger
+
+# logging.basicConfig(level=logging.INFO)
 TERMINAL_WIDTH = 400
+
+
+
 
 class TestMainFunctions(unittest.TestCase):
 
-    samples = [sample_A.input_data, sample_B.input_data, sample_C.input_data, sample_D.input_data, sample_E.input_data]
+    samples = [sample_A.input_data, sample_B.input_data, sample_C.input_data, sample_D.input_data, sample_E.input_data,
+               sample_F.input_data]
     correct_data = [
         {"reservation_date": "2023-11-21T21:13:08", "guest_name": "Sheila Carlile",
           'guest_f_name': "Sheila", 'guest_l_name': "Carlile", "confirmation_code": "HMQTYNHWQD",
           "subject_line": "Reservation confirmed - Sheila Carlile arrives Jun 27", "unit": "condo_entire_unit",
           "check_in_date": "2024-06-27T17:00:00", "check_out_date": "2024-07-01T15:00:00", "guest_total": 545.62,
          "nightly_rate": 94.00, "nights": 4, "payout": 422.92, "cleaning_fee": 60.00, "guest_service_fee": 61.55,
-         "host_service_fee": 13.08},
+         "host_service_fee": 13.08, "errors": []},
         {"reservation_date": "2023-11-18T00:11:43", "guest_name": "Ladisha James",
           'guest_f_name': "Ladisha", 'guest_l_name': "James", "confirmation_code": "HMHKX2M34Z",
           "subject_line": "Reservation confirmed - Ladisha James arrives Nov 19", "unit": "sheldon_guest_room",
           "check_in_date": "2023-11-19T17:00:00", "check_out_date": "2023-12-07T15:00:00", "guest_total": 732.36,
          "nightly_rate": 31.00, "nights": 18, "payout": 555.81, "cleaning_fee": 15.00, "guest_service_fee": 80.89,
-         "host_service_fee": 17.19},
+         "host_service_fee": 17.19, "errors": []},
         {"reservation_date": "2024-02-16T13:30:36", "guest_name": "Rosie Bomgaars",
          'guest_f_name': "Rosie", 'guest_l_name': "Bomgaars", "confirmation_code": "HMWMZWW9CQ",
          "subject_line": "Reservation confirmed - Rosie Bomgaars arrives Feb 23", "unit": "condo_entire_unit",
          "check_in_date": "2024-02-23T17:00:00", "check_out_date": "2024-02-26T15:00:00", "guest_total": 327.98,
          "nightly_rate": 60.00, "nights": 3, "payout": 252.20, "cleaning_fee": 80.00, "guest_service_fee": 36.71,
-         "host_service_fee": 7.80},
+         "host_service_fee": 7.80, "errors": []},
         {"reservation_date": "2024-02-12T03:59:36", "guest_name": "Fabian Romero",
          'guest_f_name': "Fabian", 'guest_l_name': "Romero", "confirmation_code": "HMY2FZY9SR",
          "subject_line": "Reservation confirmed - Fabian Romero arrives Jun 14", "unit": "condo_entire_unit",
          "check_in_date": "2024-06-14T17:00:00", "check_out_date": "2024-06-25T15:00:00", "guest_total": 1266.85,
          "nightly_rate": 84.03, "nights": 11, "payout": 974.17, "cleaning_fee": 80.00, "guest_service_fee": 141.78,
-         "host_service_fee": 30.13},
+         "host_service_fee": 30.13, "errors": []},
         {"reservation_date": "2024-02-19T09:56:56", "guest_name": "江理子 Qing",
          'guest_f_name': "江理子", 'guest_l_name': "Qing", "confirmation_code": "HM2P3NHWTS",
          "subject_line": "Reservation confirmed - 江理子 Qing arrives May 31", "unit": "condo_entire_unit",
          "check_in_date": "2024-05-31T17:00:00", "check_out_date": "2024-06-06T15:00:00", "guest_total": 826.55,
          "nightly_rate": 94.67, "nights": 6, "payout": 628.56, "cleaning_fee": 80.00, "guest_service_fee": 100.63,
-         "host_service_fee": 19.44}
+         "host_service_fee": 19.44, "errors": []},
+        {"reservation_date": "2024-02-11T17:03:09", "guest_name": "Rachelle Bernstein",
+         'guest_f_name': "Rachelle", 'guest_l_name': "Bernstein", "confirmation_code": "HMYNCEYS83",
+         "subject_line": "Reservation confirmed - Rachelle Bernstein arrives Feb 29", "unit": "condo_entire_unit",
+         "check_in_date": "2024-02-29T17:00:00", "check_out_date": "2024-03-02T15:00:00", "guest_total": 302.74,
+         "nightly_rate": 85.00, "nights": 2, "payout": 232.80, "cleaning_fee": 70.00, "guest_service_fee": 33.88,
+         "host_service_fee": 7.20, "errors": []}
     ]
 
     def test_samples(self):
         for i in range(0, len(self.samples)):
             msg = f"=====  TESTING INPUT {i+1} OF {len(self.samples)}: {self.samples[i]['name']}  "
             pad_length = max(0, TERMINAL_WIDTH - len(msg))
-            logging.info(msg.ljust(pad_length, "="))
+            logger.info(msg.ljust(pad_length, "="))
             output_data = EmailParser.main(self.samples[i])
             del output_data["body"]
-            logging.info("\tCorrect data: " + str(self.correct_data[i]))
-            logging.info("\tOutput data:  " + str(output_data))
+            logger.info("\tCorrect data: " + str(self.correct_data[i]))
+            logger.info("\tOutput data:  " + str(output_data))
             self.assertTrue(output_data == self.correct_data[i])
             self.assertIsNotNone(output_data["confirmation_code"])
             self.assertTrue(output_data["payout"] < output_data["guest_total"])
@@ -63,37 +76,39 @@ class TestMainFunctions(unittest.TestCase):
             self.assertTrue(isinstance(output_data["nights"], int))
             for key in ["guest_total", "nightly_rate", "payout", "cleaning_fee", "guest_service_fee", "host_service_fee"]:
                 self.assertTrue(isinstance(output_data[key], float))
-            logging.info("\tDATA EXTRACTION SUCCESSFUL.")
+            logger.info("\tDATA EXTRACTION SUCCESSFUL.")
 
     def test_get_nightly_rate(self):
         rate_and_nights = EmailParser.find_rate_and_nights(sample_A.input_data["body_plain"])
         nightly_rate = EmailParser.find_nightly_rate(rate_and_nights)
-        logging.info(f"Found nightly rate: {nightly_rate:.2f}")
+        logger.info(f"Found nightly rate: {nightly_rate:.2f}")
         num_nights = EmailParser.find_num_nights(rate_and_nights)
-        logging.info(f"Found num nights: {num_nights}")
+        self.assertIsNotNone(num_nights)
+        self.assertIsNotNone(nightly_rate)
+        logger.info(f"Found num nights: {num_nights}")
 
     def test_get_cleaning_fee(self):
         cleaning_fee = EmailParser.find_fee(sample_A.input_data["body_plain"], "Cleaning fee")
-        logging.info(f"Found cleaning fee: {cleaning_fee:.2f}")
+        logger.info(f"Found cleaning fee: {cleaning_fee:.2f}")
         cleaning_fee = EmailParser.find_fee(sample_B.input_data["body_plain"], "Cleaning fee")
-        logging.info(f"Found cleaning fee: {cleaning_fee:.2f}")
+        logger.info(f"Found cleaning fee: {cleaning_fee:.2f}")
 
     def test_get_guest_service_fee(self):
         cleaning_fee = EmailParser.find_fee(sample_A.input_data["body_plain"], "Guest service fee")
-        logging.info(f"Found guest service fee: {cleaning_fee:.2f}")
+        logger.info(f"Found guest service fee: {cleaning_fee:.2f}")
 
     def test_get_host_service_fee(self):
         cleaning_fee = EmailParser.find_fee(sample_A.input_data["body_plain"], "Service fee")
-        logging.info(f"Found host service fee: {cleaning_fee:.2f}")
+        logger.info(f"Found host service fee: {cleaning_fee:.2f}")
 
     def test_find_all_totals(self):
         totals = EmailParser.find_totals(sample_A.input_data["body_plain"])
-        logging.info(f"Found totals: {totals}")
+        logger.info(f"Found totals: {totals}")
         guest_total = EmailParser.get_guest_total(totals)
-        logging.info(f"Found guest total: {guest_total}")
+        logger.info(f"Found guest total: {guest_total}")
         self.assertEqual(guest_total, 545.62)
         payout = EmailParser.get_payout(totals)
-        logging.info(f"Found payout: {payout}")
+        logger.info(f"Found payout: {payout}")
         self.assertEqual(payout, 422.92)
 
     def test_get_guest_total(self):
