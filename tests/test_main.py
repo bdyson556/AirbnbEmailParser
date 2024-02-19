@@ -53,6 +53,7 @@ class TestMainFunctions(unittest.TestCase):
             self.assertIsNotNone(output_data["confirmation_code"])
             self.assertTrue(output_data["payout"] < output_data["guest_total"])
             self.assertTrue(output_data["check_in_date"] < output_data["check_out_date"])
+            self.assertTrue(isinstance(output_data["nights"], int))
             for key in ["guest_total", "nightly_rate", "payout", "cleaning_fee", "guest_service_fee", "host_service_fee"]:
                 self.assertTrue(isinstance(output_data[key], float))
             logging.info("\tDATA EXTRACTION SUCCESSFUL.")
@@ -97,4 +98,3 @@ class TestMainFunctions(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-    # pass
